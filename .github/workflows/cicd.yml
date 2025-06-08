@@ -1,0 +1,40 @@
+name: CI/CD Pipeline for Node.js App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Azure VM
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          echo "$DEPLOY_KEY" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          scp -i deploy_key.pem -r ./build azureuser@<YOUR_VM_IP>:/var/www/app
+
